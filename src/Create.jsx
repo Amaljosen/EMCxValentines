@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import axios from 'axios'
 import { 
   Heart, 
@@ -27,13 +27,447 @@ import {
   AlertCircle,
   CheckCircle,
   Radio,
-  TextCursor
+  TextCursor,
+  ChevronDown,
+  ChevronUp,
+  CopyIcon
 } from 'lucide-react'
-import './App.css'
 
-function Create() {
-  const backgroundImage = "https://img.freepik.com/premium-photo/valentine39s-day-love-background-with-red-pink-hearts-romantic-celebration_1294860-22831.jpg?w=360"
+// Custom shadcn/ui styled components
+const Button = ({ 
+  children, 
+  variant = "default", 
+  size = "default", 
+  className = "", 
+  disabled = false,
+  onClick,
+  type = "button",
+  ...props 
+}) => {
+  const baseStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
   
+  const variants = {
+    default: "bg-primary text-primary-foreground hover:bg-primary/90",
+    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+    outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    ghost: "hover:bg-accent hover:text-accent-foreground",
+    link: "text-primary underline-offset-4 hover:underline"
+  }
+  
+  const sizes = {
+    default: "h-10 px-4 py-2",
+    sm: "h-9 rounded-md px-3",
+    lg: "h-11 rounded-md px-8",
+    icon: "h-10 w-10"
+  }
+  
+  return (
+    <button
+      type={type}
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      disabled={disabled}
+      onClick={onClick}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+const Input = React.forwardRef(({ className = "", type = "text", ...props }, ref) => {
+  return (
+    <input
+      type={type}
+      className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      ref={ref}
+      {...props}
+    />
+  )
+})
+
+const Textarea = React.forwardRef(({ className = "", ...props }, ref) => {
+  return (
+    <textarea
+      className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      ref={ref}
+      {...props}
+    />
+  )
+})
+
+const Card = ({ className = "", ...props }) => (
+  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`} {...props} />
+)
+
+const CardHeader = ({ className = "", ...props }) => (
+  <div className={`flex flex-col space-y-1.5 p-6 ${className}`} {...props} />
+)
+
+const CardTitle = ({ className = "", ...props }) => (
+  <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`} {...props} />
+)
+
+const CardDescription = ({ className = "", ...props }) => (
+  <p className={`text-sm text-muted-foreground ${className}`} {...props} />
+)
+
+const CardContent = ({ className = "", ...props }) => (
+  <div className={`p-6 pt-0 ${className}`} {...props} />
+)
+
+const CardFooter = ({ className = "", ...props }) => (
+  <div className={`flex items-center p-6 pt-0 ${className}`} {...props} />
+)
+
+const Label = ({ className = "", ...props }) => (
+  <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`} {...props} />
+)
+
+const Progress = ({ value = 0, className = "", ...props }) => (
+  <div className={`relative h-2 w-full overflow-hidden rounded-full bg-secondary ${className}`} {...props}>
+    <div 
+      className="h-full w-full flex-1 bg-primary transition-all" 
+      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+    />
+  </div>
+)
+
+const Badge = ({ variant = "default", className = "", children, ...props }) => {
+  const variants = {
+    default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+    secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+    outline: "text-foreground"
+  }
+  
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[variant]} ${className}`} {...props}>
+      {children}
+    </span>
+  )
+}
+
+const Switch = ({ checked = false, onCheckedChange, ...props }) => {
+  const [isChecked, setIsChecked] = useState(checked)
+  
+  const handleClick = () => {
+    const newValue = !isChecked
+    setIsChecked(newValue)
+    if (onCheckedChange) onCheckedChange(newValue)
+  }
+  
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isChecked}
+      onClick={handleClick}
+      className="peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+      data-state={isChecked ? "checked" : "unchecked"}
+      {...props}
+    >
+      <span className="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0" data-state={isChecked ? "checked" : "unchecked"} />
+    </button>
+  )
+}
+
+const Tabs = ({ defaultValue, value, onValueChange, children, className = "" }) => {
+  const [activeTab, setActiveTab] = useState(value || defaultValue)
+  
+  const handleTabChange = (newValue) => {
+    setActiveTab(newValue)
+    if (onValueChange) onValueChange(newValue)
+  }
+  
+  return (
+    <div className={className}>
+      {React.Children.map(children, child => 
+        React.cloneElement(child, { activeTab, onTabChange: handleTabChange })
+      )}
+    </div>
+  )
+}
+
+const TabsList = ({ children, className = "", activeTab, onTabChange, ...props }) => (
+  <div className={`inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground ${className}`} {...props}>
+    {React.Children.map(children, child =>
+      React.cloneElement(child, { activeTab, onTabChange })
+    )}
+  </div>
+)
+
+const TabsTrigger = ({ value, children, className = "", activeTab, onTabChange, ...props }) => {
+  const isActive = activeTab === value
+  
+  return (
+    <button
+      type="button"
+      onClick={() => onTabChange(value)}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${isActive ? 'bg-background text-foreground shadow-sm' : ''} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+const TabsContent = ({ value, children, className = "", activeTab, ...props }) => {
+  if (activeTab !== value) return null
+  
+  return (
+    <div className={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${className}`} {...props}>
+      {children}
+    </div>
+  )
+}
+
+const RadioGroup = ({ value, onValueChange, children, className = "" }) => {
+  const [selectedValue, setSelectedValue] = useState(value)
+  
+  const handleChange = (newValue) => {
+    setSelectedValue(newValue)
+    if (onValueChange) onValueChange(newValue)
+  }
+  
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {React.Children.map(children, child =>
+        React.cloneElement(child, { selectedValue, onValueChange: handleChange })
+      )}
+    </div>
+  )
+}
+
+const RadioGroupItem = ({ value, id, selectedValue, onValueChange, ...props }) => {
+  const isSelected = selectedValue === value
+  
+  return (
+    <div className="flex items-center space-x-2">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isSelected}
+        onClick={() => onValueChange(value)}
+        className="h-4 w-4 rounded-full border border-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        data-state={isSelected ? "checked" : "unchecked"}
+        {...props}
+      >
+        {isSelected && (
+          <div className="h-2 w-2 rounded-full bg-primary m-auto" />
+        )}
+      </button>
+      <Label htmlFor={id}>{props.children}</Label>
+    </div>
+  )
+}
+
+const Dialog = ({ open, onOpenChange, children, ...props }) => {
+  if (!open) return null
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {React.Children.map(children, child =>
+        React.cloneElement(child, { onOpenChange })
+      )}
+    </div>
+  )
+}
+
+const DialogContent = ({ children, className = "", onOpenChange, ...props }) => (
+  <div className="fixed inset-0 z-50 bg-black/50" onClick={() => onOpenChange(false)}>
+    <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
+      <div className={`${className}`} onClick={(e) => e.stopPropagation()} {...props}>
+        {children}
+      </div>
+    </div>
+  </div>
+)
+
+const DialogHeader = ({ className = "", ...props }) => (
+  <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`} {...props} />
+)
+
+const DialogTitle = ({ className = "", ...props }) => (
+  <h2 className={`text-lg font-semibold leading-none tracking-tight ${className}`} {...props} />
+)
+
+const DialogDescription = ({ className = "", ...props }) => (
+  <p className={`text-sm text-muted-foreground ${className}`} {...props} />
+)
+
+const DialogFooter = ({ className = "", ...props }) => (
+  <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 ${className}`} {...props} />
+)
+
+const Alert = ({ variant = "default", className = "", children, ...props }) => {
+  const variants = {
+    default: "border bg-background",
+    destructive: "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive"
+  }
+  
+  return (
+    <div className={`relative w-full rounded-lg border p-4 ${variants[variant]} ${className}`} {...props}>
+      {children}
+    </div>
+  )
+}
+
+const AlertTitle = ({ className = "", ...props }) => (
+  <h5 className={`mb-1 font-medium leading-none tracking-tight ${className}`} {...props} />
+)
+
+const AlertDescription = ({ className = "", ...props }) => (
+  <div className={`text-sm ${className}`} {...props} />
+)
+
+const TooltipProvider = ({ children, ...props }) => (
+  <div {...props}>{children}</div>
+)
+
+const Tooltip = ({ children, ...props }) => {
+  const [show, setShow] = useState(false)
+  
+  return (
+    <div className="relative" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} {...props}>
+      {React.Children.map(children, (child, index) => {
+        if (index === 0) return React.cloneElement(child, { show })
+        return child
+      })}
+    </div>
+  )
+}
+
+const TooltipTrigger = ({ children, ...props }) => (
+  <div {...props}>{children}</div>
+)
+
+const TooltipContent = ({ children, show, className = "", ...props }) => {
+  if (!show) return null
+  
+  return (
+    <div className={`absolute z-50 w-max rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 ${className}`} {...props}>
+      {children}
+    </div>
+  )
+}
+
+const Accordion = ({ type = "single", children, className = "" }) => {
+  const [openItems, setOpenItems] = useState([])
+  
+  const handleToggle = (value) => {
+    if (type === "single") {
+      setOpenItems(openItems[0] === value ? [] : [value])
+    } else {
+      setOpenItems(openItems.includes(value) 
+        ? openItems.filter(item => item !== value)
+        : [...openItems, value]
+      )
+    }
+  }
+  
+  return (
+    <div className={className}>
+      {React.Children.map(children, child =>
+        React.cloneElement(child, { openItems, onToggle: handleToggle })
+      )}
+    </div>
+  )
+}
+
+const AccordionItem = ({ value, children, openItems, onToggle, ...props }) => (
+  <div className="border-b" {...props}>
+    {React.Children.map(children, child =>
+      React.cloneElement(child, { value, isOpen: openItems.includes(value), onToggle })
+    )}
+  </div>
+)
+
+const AccordionTrigger = ({ value, children, isOpen, onToggle, className = "", ...props }) => (
+  <button
+    type="button"
+    onClick={() => onToggle(value)}
+    className={`flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline ${isOpen ? 'underline' : ''} ${className}`}
+    {...props}
+  >
+    {children}
+    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+  </button>
+)
+
+const AccordionContent = ({ children, isOpen, className = "", ...props }) => {
+  if (!isOpen) return null
+  
+  return (
+    <div className={`pb-4 pt-0 ${className}`} {...props}>
+      {children}
+    </div>
+  )
+}
+
+const Separator = ({ className = "", ...props }) => (
+  <div className={`shrink-0 bg-border h-[1px] w-full ${className}`} {...props} />
+)
+
+// CSS Variables for theming
+const themeStyles = `
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 346.8 77.2% 49.8%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 346.8 77.2% 49.8%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 346.8 77.2% 49.8%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 346.8 77.2% 49.8%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+`
+
+// Main Create Component
+function Create() {
   const [step, setStep] = useState(1)
   const [gameTitle, setGameTitle] = useState('')
   const [creatorName, setCreatorName] = useState('')
@@ -43,13 +477,12 @@ function Create() {
   const [currentQuestion, setCurrentQuestion] = useState({
     id: null,
     text: '',
-    type: 'options', // 'options' or 'text'
+    type: 'options',
     image: null,
     options: ['', '', '', ''],
     correctOption: 0,
   })
   
-  // Scoring messages with both text and image
   const [messages, setMessages] = useState({
     perfect: {
       text: "Perfect! You know everything about me! ❤️",
@@ -71,7 +504,6 @@ function Create() {
     }
   })
 
-  // Love Reveal
   const [loveReveal, setLoveReveal] = useState({
     enabled: true,
     title: '',
@@ -83,29 +515,25 @@ function Create() {
   const [loading, setLoading] = useState(false)
   const [shareLink, setShareLink] = useState('')
   
-  // Modal states
-  const [showModal, setShowModal] = useState(false)
-  const [modalContent, setModalContent] = useState({
+  const [showDialog, setShowDialog] = useState(false)
+  const [dialogContent, setDialogContent] = useState({
     title: '',
     message: '',
     type: 'info'
   })
 
   const showMessage = (title, message, type = 'info') => {
-    setModalContent({ title, message, type })
-    setShowModal(true)
+    setDialogContent({ title, message, type })
+    setShowDialog(true)
   }
 
-  // API Configuration - Replace with your actual backend URL
   const API_BASE_URL = "https://your-backend-api.com/api/create-quiz"
 
   const handleImageUpload = (e, type, messageType = null) => {
     const file = e.target.files[0]
-    
     if (!file) return
     
-    // Validate file size (10MB = 10 * 1024 * 1024 bytes)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024
     if (file.size > MAX_FILE_SIZE) {
       showMessage(
         'File Too Large',
@@ -115,7 +543,6 @@ function Create() {
       return
     }
     
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       showMessage('Invalid File', 'Please select an image file (JPEG, PNG, etc.)', 'error')
       return
@@ -123,26 +550,24 @@ function Create() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
+      const result = reader.result
       if (type === 'couple') {
-        setCouplePhoto(reader.result)
+        setCouplePhoto(result)
       } else if (type === 'question') {
-        setCurrentQuestion({ ...currentQuestion, image: reader.result })
+        setCurrentQuestion({ ...currentQuestion, image: result })
       } else if (type === 'message' && messageType) {
         setMessages({
           ...messages,
           [messageType]: {
             ...messages[messageType],
-            type: messages[messageType].type, // Keep current type
-            image: reader.result,
-            text: messages[messageType].text,
+            image: result,
             imageCaption: messages[messageType].imageCaption || `A special image for ${theirName}`
           }
         })
       } else if (type === 'reveal') {
         setLoveReveal({
           ...loveReveal,
-          type: 'image',
-          image: reader.result
+          image: result
         })
       }
     }
@@ -154,10 +579,7 @@ function Create() {
       ...messages,
       [messageType]: {
         ...messages[messageType],
-        type: type,
-        image: type === 'text' ? messages[messageType].image : messages[messageType].image, // Keep image even when switching to text
-        text: messages[messageType].text,
-        imageCaption: messages[messageType].imageCaption || ''
+        type
       }
     })
   }
@@ -167,7 +589,7 @@ function Create() {
       ...messages,
       [messageType]: {
         ...messages[messageType],
-        text: text
+        text
       }
     })
   }
@@ -218,7 +640,6 @@ function Create() {
 
       setQuestions([...questions, newQuestion])
     } else {
-      // Text question - no expected answer needed
       const newQuestion = {
         id: questions.length + 1,
         text: currentQuestion.text,
@@ -231,11 +652,10 @@ function Create() {
       setQuestions([...questions, newQuestion])
     }
     
-    // Reset form but keep the same question type
     setCurrentQuestion({
       id: null,
       text: '',
-      type: currentQuestion.type, // Keep the same type
+      type: currentQuestion.type,
       image: null,
       options: ['', '', '', ''],
       correctOption: 0
@@ -306,22 +726,16 @@ function Create() {
 
     setLoading(true)
     try {
-      // Send to backend API
       const response = await axios.post(API_BASE_URL, gameData, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer your-auth-token-if-needed' // Add your auth token if required
         }
       })
       
-      console.log("✅ API Response:", response.data)
-      
-      // Extract game ID from response
       const gameId = response.data?.id || response.data?.gameId || Math.random().toString(36).substring(7)
       const link = `${window.location.origin}/view/${gameId}`
       setShareLink(link)
       
-      // Also save locally as backup
       localStorage.setItem(`lovegame_${gameId}`, JSON.stringify(gameData))
       
       setStep(6)
@@ -330,7 +744,6 @@ function Create() {
     } catch (error) {
       console.error("❌ API Error:", error)
       
-      // Fallback: Save locally and generate link
       const gameId = Math.random().toString(36).substring(7)
       const link = `${window.location.origin}/view/${gameId}`
       setShareLink(link)
@@ -338,1566 +751,1164 @@ function Create() {
       
       setStep(6)
       showMessage('Saved Locally', `🎉 Quiz saved locally! Share this link: ${link}`, 'info')
-      
-      // Log the data that would have been sent
-      console.log("📦 Data that would have been sent to API:", gameData)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div 
-      className="min-h-screen p-4 md:p-6"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}
-    >
-      {/* Modal Popup */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          ></div>
-          <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 max-w-md w-full border border-pink-200/50 transform transition-all duration-300 animate-fadeIn">
-            <div className={`p-3 rounded-full mb-4 inline-flex ${
-              modalContent.type === 'error' ? 'bg-red-100' :
-              modalContent.type === 'success' ? 'bg-green-100' : 'bg-blue-100'
-            }`}>
-              {modalContent.type === 'error' ? (
-                <AlertCircle className="w-6 h-6 text-red-500" />
-              ) : modalContent.type === 'success' ? (
-                <Check className="w-6 h-6 text-green-500" />
-              ) : (
-                <MessageSquare className="w-6 h-6 text-blue-500" />
-              )}
-            </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">{modalContent.title}</h3>
-            <p className="text-gray-600 mb-6">{modalContent.message}</p>
-            <button
-              onClick={() => setShowModal(false)}
-              className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold py-3 px-6 rounded-xl transition-all"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-gradient-to-br from-pink-900/20 via-red-900/10 to-purple-900/15 backdrop-blur-[2px] pointer-events-none"></div>
-      
-      <div className="relative z-10 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-6 md:mb-8 pt-2 md:pt-4">
-          <div className="inline-flex items-center justify-center gap-2 md:gap-3 bg-gradient-to-r from-pink-500/10 to-red-500/10 backdrop-blur-sm px-4 md:px-6 py-2 md:py-3 rounded-full mb-3 md:mb-4">
-            <Heart className="w-5 h-5 md:w-6 md:h-6 text-pink-500" fill="currentColor" />
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-pink-600 to-red-500 bg-clip-text text-transparent font-serif">
-              Create Love Quiz
-            </h1>
-            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
-          </div>
-          <p className="text-sm md:text-base text-pink-600 font-medium flex items-center justify-center gap-1 md:gap-2">
-            <User className="w-3 h-3 md:w-4 md:h-4" />
-            For: {theirName || 'Your Special Someone'}
-          </p>
-          <div className="mt-1 md:mt-2 text-xs md:text-sm text-pink-500 bg-pink-100/50 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full inline-block">
-            ✨ 5 Questions (Multiple Choice or Text)
-          </div>
-        </div>
-
-        {/* Progress Steps */}
-        <div className="flex justify-center mb-6 md:mb-8 px-2">
-          <div className="flex items-center space-x-1 md:space-x-2 bg-white/30 backdrop-blur-sm p-2 md:p-3 rounded-xl md:rounded-2xl max-w-full overflow-x-auto">
-            {[1, 2, 3, 4, 5, 6].map((stepNum) => (
-              <div key={stepNum} className="flex items-center">
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-300 ${step >= stepNum 
-                  ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg transform scale-110' 
-                  : 'bg-white/80 text-gray-400'}`}>
-                  {step === stepNum ? (
-                    <Heart className="w-4 h-4 md:w-5 md:h-5" fill="white" />
-                  ) : step > stepNum ? (
-                    <Check className="w-4 h-4 md:w-5 md:h-5" />
-                  ) : (
-                    stepNum
-                  )}
-                </div>
-                {stepNum < 6 && (
-                  <div className={`w-2 md:w-3 lg:w-6 h-1 transition-all duration-300 ${step > stepNum 
-                    ? 'bg-gradient-to-r from-pink-500 to-red-500' 
-                    : 'bg-white/50'}`}></div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* STEP 1: SETUP */}
-        {step === 1 && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50 animate-fadeIn">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <div className="p-2 bg-pink-100 rounded-lg">
-                <Users className="w-5 h-5 md:w-6 md:h-6 text-pink-500" />
-              </div>
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 font-serif">Love Story Setup</h2>
-            </div>
-            
-            <div className="space-y-4 md:space-y-6">
-              <div>
-                <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                  <User className="w-3 h-3 md:w-4 md:h-4" />
-                  Your Name
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={creatorName}
-                    onChange={(e) => setCreatorName(e.target.value)}
-                    placeholder="Alex"
-                    className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70"
-                  />
-                  <User className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
-                </div>
-              </div>
-              
-              <div>
-                <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                  <Heart className="w-3 h-3 md:w-4 md:h-4" fill="currentColor" />
-                  Their Name
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={theirName}
-                    onChange={(e) => setTheirName(e.target.value)}
-                    placeholder="Taylor"
-                    className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70"
-                  />
-                  <Heart className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-pink-400" fill="currentColor" />
-                </div>
-              </div>
-              
-              <div>
-                <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                  <FileText className="w-3 h-3 md:w-4 md:h-4" />
-                  Quiz Title
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={gameTitle}
-                    onChange={(e) => setGameTitle(e.target.value)}
-                    placeholder="How well do you know me?"
-                    className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70"
-                  />
-                  <Type className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
-                </div>
-              </div>
-              
-              <div>
-                <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                  <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
-                  Couple Photo (Optional)
-                </label>
-                {couplePhoto ? (
-                  <div className="relative group">
-                    <img 
-                      src={couplePhoto} 
-                      alt="Couple" 
-                      className="w-full h-40 md:h-48 lg:h-64 object-cover rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                    <button
-                      onClick={() => setCouplePhoto(null)}
-                      className="absolute top-2 md:top-3 right-2 md:right-3 bg-gradient-to-r from-pink-500 to-red-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                    >
-                      <X className="w-3 h-3 md:w-4 md:h-4" />
-                    </button>
-                  </div>
+    <>
+      <style>{themeStyles}</style>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 p-4 md:p-6">
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {dialogContent.type === 'error' ? (
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                ) : dialogContent.type === 'success' ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-40 md:h-48 border-2 border-dashed border-pink-300 rounded-xl cursor-pointer hover:border-pink-500 hover:bg-pink-50/30 transition-all duration-300 bg-white/50 group">
-                    <ImageIcon className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-pink-400 mb-2 md:mb-3 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs md:text-sm text-center text-pink-600 font-medium">Upload couple photo</span>
-                    <span className="text-xs text-pink-500 mt-1 text-center">Make it special</span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => handleImageUpload(e, 'couple')} 
-                      className="hidden" 
-                    />
-                  </label>
+                  <MessageSquare className="h-5 w-5 text-blue-500" />
                 )}
-              </div>
-              
-              <button
-                onClick={() => {
-                  if (!creatorName.trim() || !theirName.trim() || !gameTitle.trim()) {
-                    showMessage('Missing Information', '💝 Please fill all required fields!', 'error')
-                    return
-                  }
-                  setStep(2)
-                }}
-                className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-pink-500/30 flex items-center justify-center gap-2 md:gap-3 group"
-              >
-                <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                Start Adding Questions
-                <FileText className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            </div>
-          </div>
-        )}
+                {dialogContent.title}
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                {dialogContent.message}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setShowDialog(false)} className="w-full">
+                OK
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {/* STEP 2: QUESTIONS */}
-        {step === 2 && (
-          <div className="space-y-4 md:space-y-6 animate-fadeIn">
-            {questions.length > 0 && (
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-6 border border-pink-200/50">
-                <div className="flex items-center justify-between mb-3 md:mb-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1 md:p-2 bg-pink-100 rounded-lg">
-                      <FileText className="w-4 h-4 md:w-5 md:h-5 text-pink-500" />
-                    </div>
-                    <h3 className="text-base md:text-lg font-bold text-gray-800">
-                      Added Questions ({questions.length}/5)
-                    </h3>
-                  </div>
-                  <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
-                    questions.length === 5 
-                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-600'
-                      : 'bg-gradient-to-r from-pink-100 to-red-100 text-pink-600'
-                  }`}>
-                    {questions.length}/5
-                  </span>
-                </div>
-                <div className="space-y-2 md:space-y-3">
-                  {questions.map((q) => (
-                    <div key={q.id} className="flex items-center justify-between bg-gradient-to-r from-pink-50 to-red-50/50 p-3 md:p-4 rounded-xl border border-pink-200 hover:border-pink-300 transition-colors group">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 md:gap-3 mb-1">
-                          <div className="w-5 h-5 md:w-6 md:h-6 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                            {q.id}
-                          </div>
-                          <p className="font-semibold text-gray-800 truncate text-sm md:text-base">{q.text}</p>
-                          <span className={`text-xs px-1 md:px-2 py-0.5 rounded-full whitespace-nowrap ${
-                            q.type === 'options' 
-                              ? 'bg-purple-100 text-purple-600' 
-                              : 'bg-blue-100 text-blue-600'
-                          }`}>
-                            {q.type === 'options' ? 'Multiple Choice' : 'Text Answer'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-pink-500 ml-7 md:ml-9">
-                          {q.type === 'options' 
-                            ? `${q.options?.length || 0} options • Correct: ${String.fromCharCode(65 + (q.correctOption || 0))}`
-                            : 'Text answer - Any answer is correct'
-                          }
-                        </p>
-                      </div>
-                      <button 
-                        onClick={() => removeQuestion(q.id)} 
-                        className="opacity-0 group-hover:opacity-100 p-1 md:p-2 text-red-400 hover:text-red-600 hover:scale-125 transition-all ml-2"
-                        title="Remove question"
-                      >
-                        <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+        <div className="max-w-6xl mx-auto space-y-6">
+          <Card className="border-2 border-pink-200 shadow-lg">
+            <CardHeader className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Heart className="h-8 w-8 text-pink-500 fill-pink-500" />
+                <CardTitle className="text-3xl bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                  Create Love Quiz
+                </CardTitle>
+                <Sparkles className="h-6 w-6 text-yellow-500" />
               </div>
-            )}
+              <CardDescription className="text-lg">
+                For: <span className="font-semibold text-pink-600">{theirName || 'Your Special Someone'}</span>
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-            {questions.length < 5 && (
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50">
-                <div className="flex items-center justify-between mb-4 md:mb-6">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-red-100 rounded-lg">
-                      <Plus className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-pink-500" />
+          <Card className="border-pink-200 shadow-lg">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="space-y-1">
+                  <h3 className="font-semibold">Progress</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Step {step} of 6 • {Math.round((step / 6) * 100)}% complete
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-pink-600 border-pink-300">
+                  {step}/6
+                </Badge>
+              </div>
+              <Progress value={(step / 6) * 100} className="h-2" />
+              <div className="flex justify-between mt-2">
+                {['Setup', 'Questions', 'Messages', 'Reveal', 'Preview', 'Share'].map((label, index) => (
+                  <div key={label} className="flex flex-col items-center">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      step > index + 1 ? 'bg-green-500 text-white' :
+                      step === index + 1 ? 'bg-pink-500 text-white' :
+                      'bg-gray-200 text-gray-500'
+                    }`}>
+                      {step > index + 1 ? <Check className="h-4 w-4" /> : index + 1}
                     </div>
-                    <div>
-                      <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-800">
-                        Question #{questions.length + 1}
-                      </h2>
-                      <p className="text-xs md:text-sm text-pink-500">
-                        {currentQuestion.type === 'options' ? 'Multiple choice question' : 'Text answer question'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-r from-pink-500/10 to-red-500/10 px-2 md:px-3 py-1 rounded-full">
-                    <span className="text-xs md:text-sm font-semibold text-pink-600">
-                      {questions.length + 1}/5
+                    <span className={`text-xs mt-1 ${
+                      step >= index + 1 ? 'text-pink-600 font-medium' : 'text-gray-500'
+                    }`}>
+                      {label}
                     </span>
                   </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {step === 1 && (
+            <Card className="border-pink-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-6 w-6 text-pink-500" />
+                  Love Story Setup
+                </CardTitle>
+                <CardDescription>
+                  Let's set up your love quiz by adding your details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="creatorName" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Your Name
+                    </Label>
+                    <Input
+                      id="creatorName"
+                      placeholder="Alex"
+                      value={creatorName}
+                      onChange={(e) => setCreatorName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="theirName" className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 fill-pink-500" />
+                      Their Name
+                    </Label>
+                    <Input
+                      id="theirName"
+                      placeholder="Taylor"
+                      value={theirName}
+                      onChange={(e) => setTheirName(e.target.value)}
+                    />
+                  </div>
                 </div>
-                
-                <div className="space-y-4 md:space-y-6">
-                  <div>
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                      <Type className="w-3 h-3 md:w-4 md:h-4" />
-                      Question Text
-                    </label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gameTitle" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Quiz Title
+                  </Label>
+                  <Input
+                    id="gameTitle"
+                    placeholder="How well do you know me?"
+                    value={gameTitle}
+                    onChange={(e) => setGameTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Couple Photo (Optional)
+                  </Label>
+                  {couplePhoto ? (
                     <div className="relative">
-                      <textarea
-                        value={currentQuestion.text}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
+                      <img
+                        src={couplePhoto}
+                        alt="Couple"
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={() => setCouplePhoto(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-pink-300 rounded-lg p-8 text-center hover:border-pink-500 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'couple')}
+                        className="hidden"
+                        id="couple-photo"
+                      />
+                      <label htmlFor="couple-photo" className="cursor-pointer">
+                        <ImageIcon className="h-12 w-12 text-pink-400 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-pink-600">Upload couple photo</p>
+                        <p className="text-xs text-pink-500 mt-1">Make it special</p>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  className="w-full gap-2 bg-pink-500 hover:bg-pink-600 text-white"
+                  onClick={() => {
+                    if (!creatorName.trim() || !theirName.trim() || !gameTitle.trim()) {
+                      showMessage('Missing Information', '💝 Please fill all required fields!', 'error')
+                      return
+                    }
+                    setStep(2)
+                  }}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  Start Adding Questions
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              {questions.length > 0 && (
+                <Card className="border-pink-200 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-pink-500" />
+                        Added Questions ({questions.length}/5)
+                      </CardTitle>
+                      <Badge variant={questions.length === 5 ? "default" : "secondary"}>
+                        {questions.length}/5
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {questions.map((q) => (
+                        <div key={q.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1">
+                              <Badge variant="outline" className="h-6 w-6 p-0 flex items-center justify-center">
+                                {q.id}
+                              </Badge>
+                              <span className="font-medium truncate">{q.text}</span>
+                              <Badge variant={q.type === 'options' ? "secondary" : "outline"}>
+                                {q.type === 'options' ? 'Multiple Choice' : 'Text Answer'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-500 ml-9">
+                              {q.type === 'options' 
+                                ? `${q.options?.length || 0} options • Correct: ${String.fromCharCode(65 + (q.correctOption || 0))}`
+                                : 'Text answer - Any answer is correct'
+                              }
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeQuestion(q.id)}
+                            className="text-gray-500 hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {questions.length < 5 && (
+                <Card className="border-pink-200 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5 text-pink-500" />
+                        Question #{questions.length + 1}
+                      </CardTitle>
+                      <Badge variant="outline">
+                        {questions.length + 1}/5
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      {currentQuestion.type === 'options' ? 'Multiple choice question' : 'Text answer question'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="question-text" className="flex items-center gap-2">
+                        <Type className="h-4 w-4" />
+                        Question Text
+                      </Label>
+                      <Textarea
+                        id="question-text"
                         placeholder={
                           currentQuestion.type === 'options' 
                             ? "What's my favorite color?"
                             : "What was your favorite moment with me?"
                         }
-                        rows="3"
-                        className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70 resize-none"
+                        value={currentQuestion.text}
+                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
+                        rows={3}
                       />
-                      <MessageSquare className="absolute left-2 md:left-3 top-3 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
                     </div>
-                  </div>
 
-                  {/* Question Type Selection - Moved under question text */}
-                  <div className="bg-gradient-to-r from-pink-50 to-red-50/30 rounded-xl p-3 md:p-4 border border-pink-200">
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-2">
-                      <Radio className="w-3 h-3 md:w-4 md:h-4" />
-                      Question Type
-                    </label>
-                    <div className="flex gap-2 md:gap-3">
-                      <button
-                        onClick={() => setCurrentQuestion({ 
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Radio className="h-4 w-4" />
+                        Question Type
+                      </Label>
+                      <Tabs 
+                        defaultValue="options" 
+                        value={currentQuestion.type}
+                        onValueChange={(value) => setCurrentQuestion({ 
                           ...currentQuestion, 
-                          type: 'options',
-                          options: ['', '', '', '']
+                          type: value,
+                          options: value === 'options' ? ['', '', '', ''] : [],
+                          correctOption: value === 'options' ? 0 : -1
                         })}
-                        className={`flex-1 py-2 md:py-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 ${
-                          currentQuestion.type === 'options' 
-                            ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow' 
-                            : 'bg-white text-gray-700 border border-pink-200'
-                        }`}
                       >
-                        <Radio className="w-3 h-3 md:w-4 md:h-4" />
-                        Multiple Choice
-                      </button>
-                      <button
-                        onClick={() => setCurrentQuestion({ 
-                          ...currentQuestion, 
-                          type: 'text',
-                          options: [],
-                          correctOption: -1
-                        })}
-                        className={`flex-1 py-2 md:py-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 ${
-                          currentQuestion.type === 'text' 
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow' 
-                            : 'bg-white text-gray-700 border border-blue-200'
-                        }`}
-                      >
-                        <TextCursor className="w-3 h-3 md:w-4 md:h-4" />
-                        Text Answer
-                      </button>
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="options" className="gap-2">
+                            <Radio className="h-4 w-4" />
+                            Multiple Choice
+                          </TabsTrigger>
+                          <TabsTrigger value="text" className="gap-2">
+                            <TextCursor className="h-4 w-4" />
+                            Text Answer
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="options" className="mt-4">
+                          <Alert>
+                            <Radio className="h-4 w-4" />
+                            <AlertTitle>Multiple Choice</AlertTitle>
+                            <AlertDescription>
+                              {theirName} will select from the options you provide
+                            </AlertDescription>
+                          </Alert>
+                        </TabsContent>
+                        <TabsContent value="text" className="mt-4">
+                          <Alert>
+                            <TextCursor className="h-4 w-4" />
+                            <AlertTitle>Text Answer</AlertTitle>
+                            <AlertDescription>
+                              {theirName} will type their answer - any answer is correct!
+                            </AlertDescription>
+                          </Alert>
+                        </TabsContent>
+                      </Tabs>
                     </div>
-                    <p className="text-xs text-pink-500 mt-2">
-                      {currentQuestion.type === 'text' 
-                        ? 'Text questions: Any answer is considered correct'
-                        : 'Multiple choice: Select one correct option from the choices'
-                      }
-                    </p>
-                  </div>
 
-                  <div>
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                      <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
-                      Question Image (Optional)
-                    </label>
-                    {currentQuestion.image ? (
-                      <div className="relative group">
-                        <img src={currentQuestion.image} alt="Question" className="w-full h-40 md:h-48 object-cover rounded-xl shadow transition-transform duration-300 group-hover:scale-[1.02]" />
-                        <button
-                          onClick={() => setCurrentQuestion({ ...currentQuestion, image: null })}
-                          className="absolute top-2 md:top-3 right-2 md:right-3 bg-gradient-to-r from-pink-500 to-red-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                        >
-                          <X className="w-3 h-3 md:w-4 md:h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-pink-300 rounded-xl cursor-pointer hover:border-pink-500 hover:bg-pink-50/30 transition-all duration-300 bg-white/50 group">
-                        <ImageIcon className="w-6 h-6 md:w-8 md:h-8 text-pink-400 mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
-                        <span className="text-xs md:text-sm text-pink-600">Add question image</span>
-                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'question')} className="hidden" />
-                      </label>
-                    )}
-                  </div>
-
-                  {/* Options Section for Multiple Choice */}
-                  {currentQuestion.type === 'options' && (
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50/30 rounded-xl p-4 md:p-6 border border-purple-200">
-                      <div className="flex items-center justify-between mb-2 md:mb-3">
-                        <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-purple-600">
-                          <Check className="w-3 h-3 md:w-4 md:h-4" />
-                          Options (Select correct one)
-                        </label>
-                        <span className="text-xs text-purple-500">
-                          Click radio for correct answer
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-3 md:space-y-4">
-                        {currentQuestion.options.map((option, index) => (
-                          <div key={index} className="bg-gradient-to-r from-purple-50 to-pink-50/30 p-3 md:p-4 rounded-xl border border-purple-200 hover:border-purple-300 transition-colors">
-                            <div className="flex items-center gap-2 md:gap-4">
-                              <div className="flex items-center gap-2 md:gap-3">
-                                <input
-                                  type="radio"
-                                  name="correct"
-                                  checked={currentQuestion.correctOption === index}
-                                  onChange={() => setCurrentQuestion({ ...currentQuestion, correctOption: index })}
-                                  className="w-4 h-4 md:w-5 md:h-5 text-purple-500 cursor-pointer"
-                                />
-                                <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg flex items-center justify-center">
-                                  <span className="font-bold text-xs md:text-sm text-purple-600">{String.fromCharCode(65 + index)}</span>
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) => handleOptionChange(index, e.target.value)}
-                                  placeholder={`Enter option ${String.fromCharCode(65 + index)}`}
-                                  className="w-full px-3 md:px-4 py-1 md:py-2 text-sm md:text-base border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none bg-white/70"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Text Answer Information */}
-                  {currentQuestion.type === 'text' && (
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50/30 rounded-xl p-4 md:p-6 border border-blue-200">
-                      <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                        <div className="p-1 md:p-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
-                          <TextCursor className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Question Image (Optional)
+                      </Label>
+                      {currentQuestion.image ? (
+                        <div className="relative">
+                          <img
+                            src={currentQuestion.image}
+                            alt="Question"
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => setCurrentQuestion({ ...currentQuestion, image: null })}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-sm md:text-base text-blue-600">Text Answer Question</h3>
-                          <p className="text-xs text-blue-500">
-                            {theirName} will type their answer in a text box
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-3 md:p-4 rounded-lg">
-                        <div className="flex items-start gap-2 md:gap-3">
-                          <div className="p-1 md:p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                            <Check className="w-3 h-3 md:w-4 md:h-4 text-blue-500" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-blue-600 text-sm">Note:</p>
-                            <p className="text-xs text-blue-500">
-                              For text answer questions, any answer from {theirName} will be considered correct.
-                              This is perfect for open-ended questions about feelings, memories, or thoughts!
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 rounded-xl border ${
-                    currentQuestion.type === 'options' 
-                      ? 'bg-gradient-to-r from-pink-50 to-red-50/30 border-pink-200'
-                      : 'bg-gradient-to-r from-blue-50 to-purple-50/30 border-blue-200'
-                  }`}>
-                    <div className={`p-1 md:p-2 rounded-lg ${
-                      currentQuestion.type === 'options' ? 'bg-white' : 'bg-white'
-                    }`}>
-                      {currentQuestion.type === 'options' ? (
-                        <Radio className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
                       ) : (
-                        <TextCursor className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+                        <div className="border-2 border-dashed border-pink-300 rounded-lg p-8 text-center hover:border-pink-500 transition-colors cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, 'question')}
+                            className="hidden"
+                            id="question-image"
+                          />
+                          <label htmlFor="question-image" className="cursor-pointer">
+                            <ImageIcon className="h-8 w-8 text-pink-400 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-pink-600">Add question image</p>
+                          </label>
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm md:text-base text-pink-600">
-                        {currentQuestion.type === 'options' ? 'Multiple Choice Question' : 'Text Answer Question'}
+
+                    {currentQuestion.type === 'options' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-2">
+                            <Check className="h-4 w-4" />
+                            Options (Select correct one)
+                          </Label>
+                          <span className="text-sm text-gray-500">
+                            Click radio for correct answer
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {currentQuestion.options.map((option, index) => (
+                            <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
+                              <RadioGroup
+                                value={currentQuestion.correctOption.toString()}
+                                onValueChange={(value) => setCurrentQuestion({ 
+                                  ...currentQuestion, 
+                                  correctOption: parseInt(value) 
+                                })}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                                  <Label
+                                    htmlFor={`option-${index}`}
+                                    className="flex items-center gap-2 font-normal cursor-pointer"
+                                  >
+                                    <Badge variant="outline" className="h-6 w-6 p-0 flex items-center justify-center">
+                                      {String.fromCharCode(65 + index)}
+                                    </Badge>
+                                  </Label>
+                                </div>
+                              </RadioGroup>
+                              <Input
+                                placeholder={`Enter option ${String.fromCharCode(65 + index)}`}
+                                value={option}
+                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                className="flex-1"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      className="w-full gap-2 bg-pink-500 hover:bg-pink-600 text-white"
+                      onClick={addQuestion}
+                      disabled={!currentQuestion.text.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Question {questions.length + 1}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )}
+
+              {questions.length === 5 && (
+                <Card className="border-pink-200 shadow-lg">
+                  <CardContent className="pt-6">
+                    <div className="text-center space-y-4">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                      <h3 className="text-xl font-semibold">All Questions Added!</h3>
+                      <p className="text-gray-500">
+                        You've added all 5 questions. Ready to continue!
                       </p>
-                      <p className="text-xs text-pink-500">
-                        {currentQuestion.type === 'options' 
-                          ? `${theirName} will select from ${currentQuestion.options.filter(opt => opt.trim() !== '').length} options`
-                          : `${theirName} will type their answer - any answer is correct!`
-                        }
-                      </p>
+                      <Button
+                        className="w-full gap-2 bg-purple-500 hover:bg-purple-600 text-white"
+                        onClick={() => setStep(3)}
+                      >
+                        Continue to Score Messages
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-
-                  <button
-                    onClick={addQuestion}
-                    className={`w-full text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg flex items-center justify-center gap-2 md:gap-3 ${
-                      currentQuestion.type === 'options'
-                        ? 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-pink-500/30'
-                        : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-blue-500/30'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                    Add Question {questions.length + 1}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {questions.length > 0 && questions.length < 5 && (
-              <div className="text-center">
-                <p className="text-pink-600 text-sm mb-3">
-                  Need {5 - questions.length} more questions to continue
-                </p>
-              </div>
-            )}
-
-            {questions.length === 5 && (
-              <button
-                onClick={() => setStep(3)}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 md:gap-3"
-              >
-                <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                Continue to Score Messages
-                <Award className="w-4 h-4 md:w-5 md-h-5" />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* STEP 3: SCORING MESSAGES */}
-        {step === 3 && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50 animate-fadeIn">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <div className="p-1 md:p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-                <Award className="w-5 h-5 md:w-6 md:h-6 text-purple-500" />
-              </div>
-              <div>
-                <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 font-serif">
-                  Score Messages
-                </h2>
-                <p className="text-sm md:text-base text-pink-600">Customize messages for {theirName}</p>
-                <p className="text-xs text-pink-400 mt-1">💡 You can add both text and image for each score level!</p>
-              </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-            
-            <div className="space-y-6 md:space-y-8">
-              {/* Perfect Score */}
-              <div className="bg-gradient-to-r from-yellow-50/30 to-orange-50/30 rounded-xl p-4 md:p-6 border border-yellow-200">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4 gap-2">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1 md:p-2 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg">
-                      <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-600" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <h3 className="font-bold text-yellow-700 text-base md:text-lg">Perfect (8-10 points)</h3>
-                        <span className="text-xs bg-yellow-100 text-yellow-600 px-1 md:px-2 py-0.5 rounded-full">Editable</span>
-                      </div>
-                      <p className="text-xs text-yellow-600">They know you completely!</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 md:gap-2">
-                    <button
-                      onClick={() => handleMessageTypeChange('perfect', 'text')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.perfect.type === 'text' 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-yellow-200'}`}
-                    >
-                      <Type className="w-2 h-2 md:w-3 md:h-3" />
-                      Text Only
-                    </button>
-                    <button
-                      onClick={() => handleMessageTypeChange('perfect', 'image')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.perfect.type === 'image' 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-yellow-200'}`}
-                    >
-                      <ImageIcon className="w-2 h-2 md:w-3 md:h-3" />
-                      Add Image
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Text field - always visible */}
-                <div className="mb-3 md:mb-4">
-                  <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-yellow-600 mb-1 md:mb-2">
-                    <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-                    Message Text
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      value={messages.perfect.text}
-                      onChange={(e) => handleMessageTextChange('perfect', e.target.value)}
-                      placeholder="Perfect! You know everything about me! ❤️"
-                      rows="3"
-                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-yellow-200 rounded-xl focus:border-yellow-500 focus:outline-none bg-white/70 resize-none"
-                    />
-                    <Edit2 className="absolute left-2 md:left-3 top-3 w-3 h-3 md:w-4 md:h-4 text-yellow-400" />
-                  </div>
-                </div>
-                
-                {/* Image section - only when image type is selected */}
-                {messages.perfect.type === 'image' && (
-                  <div className="mt-3 md:mt-4">
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-yellow-600 mb-1 md:mb-2">
-                      <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
-                      Celebration Image
-                      <span className="text-xs font-normal text-yellow-500 ml-1">(Max 10MB)</span>
-                    </label>
-                    
-                    {messages.perfect.image ? (
-                      <div className="space-y-3 md:space-y-4">
-                        <div className="relative group">
-                          <img 
-                            src={messages.perfect.image} 
-                            alt="Perfect score" 
-                            className="w-full h-40 md:h-48 lg:h-64 object-cover rounded-xl shadow transition-transform duration-300 group-hover:scale-[1.02]"
-                          />
-                          <div className="absolute top-2 md:top-3 right-2 md:right-3 flex gap-1 md:gap-2">
-                            <button
-                              onClick={() => handleMessageTypeChange('perfect', 'text')}
-                              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3 md:w-4 md:h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Image caption field */}
-                        <div>
-                          <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-yellow-600 mb-1 md:mb-2">
-                            <Type className="w-2 h-2 md:w-3 md:h-3" />
-                            Image Caption (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={messages.perfect.imageCaption || ''}
-                            onChange={(e) => handleImageCaptionChange('perfect', e.target.value)}
-                            placeholder={`A special celebration for ${theirName}!`}
-                            className="w-full px-3 md:px-4 py-1 md:py-2 text-sm md:text-base border-2 border-yellow-200 rounded-lg focus:border-yellow-500 focus:outline-none bg-white/70"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 md:space-y-3">
-                        <div className="flex items-start gap-1 md:gap-2 text-xs text-yellow-600 bg-yellow-50 p-2 md:p-3 rounded-lg">
-                          <Sparkles className="w-2 h-2 md:w-3 md:h-3 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium">Suggestion:</span> Add a happy celebration image - you two smiling, fireworks, or a romantic moment!</span>
-                        </div>
-                        
-                        <label className="flex flex-col items-center justify-center w-full h-36 md:h-48 border-2 border-dashed border-yellow-300 rounded-xl cursor-pointer hover:border-yellow-500 hover:bg-yellow-50/30 transition-all duration-300 bg-white/50 group">
-                          <Trophy className="w-8 h-8 md:w-10 md:h-10 text-yellow-400 mb-2 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs md:text-sm text-yellow-600 font-medium text-center">Upload celebration image</span>
-                          <span className="text-xs text-yellow-500 mt-1 text-center">Max 10MB • JPG, PNG, GIF</span>
-                          <span className="text-xs text-yellow-400 mt-1 text-center px-2">Suggested: Your happiest photo together! 🎉</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={(e) => handleImageUpload(e, 'message', 'perfect')} 
-                            className="hidden" 
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+          )}
 
-              {/* Good Score */}
-              <div className="bg-gradient-to-r from-pink-50/30 to-red-50/30 rounded-xl p-4 md:p-6 border border-pink-200">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4 gap-2">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-red-100 rounded-lg">
-                      <Star className="w-4 h-4 md:w-5 md:h-5 text-pink-500" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <h3 className="font-bold text-pink-700 text-base md:text-lg">Good (5-7 points)</h3>
-                        <span className="text-xs bg-pink-100 text-pink-600 px-1 md:px-2 py-0.5 rounded-full">Editable</span>
-                      </div>
-                      <p className="text-xs text-pink-600">They know you pretty well!</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 md:gap-2">
-                    <button
-                      onClick={() => handleMessageTypeChange('good', 'text')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.good.type === 'text' 
-                        ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-pink-200'}`}
-                    >
-                      <Type className="w-2 h-2 md:w-3 md:h-3" />
-                      Text Only
-                    </button>
-                    <button
-                      onClick={() => handleMessageTypeChange('good', 'image')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.good.type === 'image' 
-                        ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-pink-200'}`}
-                    >
-                      <ImageIcon className="w-2 h-2 md:w-3 md:h-3" />
-                      Add Image
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Text field - always visible */}
-                <div className="mb-3 md:mb-4">
-                  <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                    <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-                    Message Text
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      value={messages.good.text}
-                      onChange={(e) => handleMessageTextChange('good', e.target.value)}
-                      placeholder="Great! You know me pretty well! 💕"
-                      rows="3"
-                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70 resize-none"
-                    />
-                    <Edit2 className="absolute left-2 md:left-3 top-3 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
-                  </div>
-                </div>
-                
-                {/* Image section - only when image type is selected */}
-                {messages.good.type === 'image' && (
-                  <div className="mt-3 md:mt-4">
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                      <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
-                      Encouraging Image
-                      <span className="text-xs font-normal text-pink-500 ml-1">(Max 10MB)</span>
-                    </label>
-                    
-                    {messages.good.image ? (
-                      <div className="space-y-3 md:space-y-4">
-                        <div className="relative group">
-                          <img 
-                            src={messages.good.image} 
-                            alt="Good score" 
-                            className="w-full h-40 md:h-48 lg:h-64 object-cover rounded-xl shadow transition-transform duration-300 group-hover:scale-[1.02]"
-                          />
-                          <div className="absolute top-2 md:top-3 right-2 md:right-3 flex gap-1 md:gap-2">
-                            <button
-                              onClick={() => handleMessageTypeChange('good', 'text')}
-                              className="bg-gradient-to-r from-pink-500 to-red-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3 md:w-4 md:h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Image caption field */}
-                        <div>
-                          <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                            <Type className="w-2 h-2 md:w-3 md:h-3" />
-                            Image Caption (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={messages.good.imageCaption || ''}
-                            onChange={(e) => handleImageCaptionChange('good', e.target.value)}
-                            placeholder={`You're doing great, ${theirName}!`}
-                            className="w-full px-3 md:px-4 py-1 md:py-2 text-sm md:text-base border-2 border-pink-200 rounded-lg focus:border-pink-500 focus:outline-none bg-white/70"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 md:space-y-3">
-                        <div className="flex items-start gap-1 md:gap-2 text-xs text-pink-600 bg-pink-50 p-2 md:p-3 rounded-lg">
-                          <Sparkles className="w-2 h-2 md:w-3 md:h-3 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium">Suggestion:</span> Add a warm, encouraging image - a cozy moment, holding hands, or a sweet memory!</span>
-                        </div>
-                        
-                        <label className="flex flex-col items-center justify-center w-full h-36 md:h-48 border-2 border-dashed border-pink-300 rounded-xl cursor-pointer hover:border-pink-500 hover:bg-pink-50/30 transition-all duration-300 bg-white/50 group">
-                          <Star className="w-8 h-8 md:w-10 md:h-10 text-pink-400 mb-2 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs md:text-sm text-pink-600 font-medium text-center">Upload encouraging image</span>
-                          <span className="text-xs text-pink-500 mt-1 text-center">Max 10MB • JPG, PNG, GIF</span>
-                          <span className="text-xs text-pink-400 mt-1 text-center px-2">Suggested: A warm, happy photo of you two! 🌟</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={(e) => handleImageUpload(e, 'message', 'good')} 
-                            className="hidden" 
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+          {step === 3 && (
+            <Card className="border-pink-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-6 w-6 text-pink-500" />
+                  Score Messages
+                </CardTitle>
+                <CardDescription>
+                  Customize messages for {theirName} based on their score
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Tabs defaultValue="perfect">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="perfect" className="gap-2">
+                      <Trophy className="h-4 w-4" />
+                      Perfect (8-10)
+                    </TabsTrigger>
+                    <TabsTrigger value="good" className="gap-2">
+                      <Star className="h-4 w-4" />
+                      Good (5-7)
+                    </TabsTrigger>
+                    <TabsTrigger value="low" className="gap-2">
+                      <Heart className="h-4 w-4" />
+                      Low (0-4)
+                    </TabsTrigger>
+                  </TabsList>
 
-              {/* Low Score */}
-              <div className="bg-gradient-to-r from-blue-50/30 to-purple-50/30 rounded-xl p-4 md:p-6 border border-blue-200">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4 gap-2">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1 md:p-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
-                      <Heart className="w-4 h-4 md:w-5 md:h-5 text-blue-500" fill="currentColor" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <h3 className="font-bold text-blue-700 text-base md:text-lg">Low (0-4 points)</h3>
-                        <span className="text-xs bg-blue-100 text-blue-600 px-1 md:px-2 py-0.5 rounded-full">Editable</span>
-                      </div>
-                      <p className="text-xs text-blue-600">More time to connect!</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 md:gap-2">
-                    <button
-                      onClick={() => handleMessageTypeChange('low', 'text')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.low.type === 'text' 
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-blue-200'}`}
-                    >
-                      <Type className="w-2 h-2 md:w-3 md:h-3" />
-                      Text Only
-                    </button>
-                    <button
-                      onClick={() => handleMessageTypeChange('low', 'image')}
-                      className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1 ${messages.low.type === 'image' 
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow' 
-                        : 'bg-white text-gray-700 border border-blue-200'}`}
-                    >
-                      <ImageIcon className="w-2 h-2 md:w-3 md:h-3" />
-                      Add Image
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Text field - always visible */}
-                <div className="mb-3 md:mb-4">
-                  <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-blue-600 mb-1 md:mb-2">
-                    <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-                    Message Text
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      value={messages.low.text}
-                      onChange={(e) => handleMessageTextChange('low', e.target.value)}
-                      placeholder="Let's spend more time together! 😘"
-                      rows="3"
-                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-blue-200 rounded-xl focus:border-blue-500 focus:outline-none bg-white/70 resize-none"
-                    />
-                    <Edit2 className="absolute left-2 md:left-3 top-3 w-3 h-3 md:w-4 md:h-4 text-blue-400" />
-                  </div>
-                </div>
-                
-                {/* Image section - only when image type is selected */}
-                {messages.low.type === 'image' && (
-                  <div className="mt-3 md:mt-4">
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-blue-600 mb-1 md:mb-2">
-                      <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
-                      Loving Image
-                      <span className="text-xs font-normal text-blue-500 ml-1">(Max 10MB)</span>
-                    </label>
-                    
-                    {messages.low.image ? (
-                      <div className="space-y-3 md:space-y-4">
-                        <div className="relative group">
-                          <img 
-                            src={messages.low.image} 
-                            alt="Low score" 
-                            className="w-full h-40 md:h-48 lg:h-64 object-cover rounded-xl shadow transition-transform duration-300 group-hover:scale-[1.02]"
-                          />
-                          <div className="absolute top-2 md:top-3 right-2 md:right-3 flex gap-1 md:gap-2">
-                            <button
-                              onClick={() => handleMessageTypeChange('low', 'text')}
-                              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3 md:w-4 md:h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Image caption field */}
+                  {['perfect', 'good', 'low'].map((type) => (
+                    <TabsContent key={type} value={type} className="space-y-4">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-blue-600 mb-1 md:mb-2">
-                            <Type className="w-2 h-2 md:w-3 md:h-3" />
-                            Image Caption (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={messages.low.imageCaption || ''}
-                            onChange={(e) => handleImageCaptionChange('low', e.target.value)}
-                            placeholder={`Let's create more memories together, ${theirName}!`}
-                            className="w-full px-3 md:px-4 py-1 md:py-2 text-sm md:text-base border-2 border-blue-200 rounded-lg focus:border-blue-500 focus:outline-none bg-white/70"
-                          />
+                          <h4 className="font-semibold capitalize">
+                            {type === 'perfect' && 'Perfect Score'}
+                            {type === 'good' && 'Good Score'}
+                            {type === 'low' && 'Low Score'}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {type === 'perfect' && 'They know you completely!'}
+                            {type === 'good' && 'They know you pretty well!'}
+                            {type === 'low' && 'More time to connect!'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant={messages[type].type === 'text' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleMessageTypeChange(type, 'text')}
+                            className={messages[type].type === 'text' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''}
+                          >
+                            <Type className="h-3 w-3 mr-1" />
+                            Text
+                          </Button>
+                          <Button
+                            variant={messages[type].type === 'image' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleMessageTypeChange(type, 'image')}
+                            className={messages[type].type === 'image' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''}
+                          >
+                            <ImageIcon className="h-3 w-3 mr-1" />
+                            Image
+                          </Button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-2 md:space-y-3">
-                        <div className="flex items-start gap-1 md:gap-2 text-xs text-blue-600 bg-blue-50 p-2 md:p-3 rounded-lg">
-                          <Sparkles className="w-2 h-2 md:w-3 md:h-3 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium">Suggestion:</span> Add a loving, comforting image - a hug, sunset together, or a cute "let's try again" moment!</span>
-                        </div>
-                        
-                        <label className="flex flex-col items-center justify-center w-full h-36 md:h-48 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-300 bg-white/50 group">
-                          <Heart className="w-8 h-8 md:w-10 md:h-10 text-blue-400 mb-2 group-hover:scale-110 transition-transform" fill="currentColor" />
-                          <span className="text-xs md:text-sm text-blue-600 font-medium text-center">Upload loving image</span>
-                          <span className="text-xs text-blue-500 mt-1 text-center">Max 10MB • JPG, PNG, GIF</span>
-                          <span className="text-xs text-blue-400 mt-1 text-center px-2">Suggested: A comforting, loving photo! 💙</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={(e) => handleImageUpload(e, 'message', 'low')} 
-                            className="hidden" 
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
 
-              <div className="bg-gradient-to-r from-pink-50/50 to-red-50/30 rounded-xl p-3 md:p-4 border border-pink-200">
-                <div className="flex items-start md:items-center gap-2 md:gap-3">
-                  <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-red-100 rounded-lg flex-shrink-0">
-                    <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-pink-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-pink-600 text-sm">Pro Tip:</p>
-                    <p className="text-xs text-pink-500">
-                      You can add both text and image! The text will always show, and the image appears below it when added.
-                      {theirName} will love the personal touch! 💖
+                      <div className="space-y-2">
+                        <Label>Message Text</Label>
+                        <Textarea
+                          value={messages[type].text}
+                          onChange={(e) => handleMessageTextChange(type, e.target.value)}
+                          placeholder={
+                            type === 'perfect' ? "Perfect! You know everything about me! ❤️" :
+                            type === 'good' ? "Great! You know me pretty well! 💕" :
+                            "Let's spend more time together! 😘"
+                          }
+                          rows={3}
+                        />
+                      </div>
+
+                      {messages[type].type === 'image' && (
+                        <div className="space-y-4">
+                          <Label>Celebration Image</Label>
+                          {messages[type].image ? (
+                            <div className="space-y-3">
+                              <div className="relative">
+                                <img
+                                  src={messages[type].image}
+                                  alt={`${type} score`}
+                                  className="w-full h-48 object-cover rounded-lg"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-2 right-2"
+                                  onClick={() => handleMessageTypeChange(type, 'text')}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Image Caption (Optional)</Label>
+                                <Input
+                                  value={messages[type].imageCaption || ''}
+                                  onChange={(e) => handleImageCaptionChange(type, e.target.value)}
+                                  placeholder={`A special celebration for ${theirName}!`}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="border-2 border-dashed border-pink-300 rounded-lg p-8 text-center hover:border-pink-500 transition-colors cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(e, 'message', type)}
+                                className="hidden"
+                                id={`${type}-image`}
+                              />
+                              <label htmlFor={`${type}-image`} className="cursor-pointer">
+                                {type === 'perfect' && <Trophy className="h-8 w-8 text-yellow-500 mx-auto mb-2" />}
+                                {type === 'good' && <Star className="h-8 w-8 text-pink-500 mx-auto mb-2" />}
+                                {type === 'low' && <Heart className="h-8 w-8 text-blue-500 mx-auto mb-2" />}
+                                <p className="text-sm font-medium text-pink-600">Upload celebration image</p>
+                                <p className="text-xs text-pink-500 mt-1">Max 10MB • JPG, PNG, GIF</p>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
+                </Tabs>
+
+                <Alert>
+                  <Sparkles className="h-4 w-4" />
+                  <AlertTitle>Pro Tip</AlertTitle>
+                  <AlertDescription>
+                    You can add both text and image! The text will always show, and the image appears below it when added.
+                    {theirName} will love the personal touch! 💖
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+              <CardFooter className="flex gap-4">
+                <Button
+                  variant="outline"
+                  className="gap-2 flex-1"
+                  onClick={() => setStep(2)}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Questions
+                </Button>
+                <Button
+                  className="gap-2 flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+                  onClick={() => setStep(4)}
+                >
+                  <Gift className="h-4 w-4" />
+                  Add Love Reveal
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {step === 4 && (
+            <Card className="border-pink-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gift className="h-6 w-6 text-pink-500" />
+                  Love Reveal
+                </CardTitle>
+                <CardDescription>
+                  Add a special message for {theirName} to see before the quiz
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label className="text-base font-medium">Enable Love Reveal</Label>
+                    <p className="text-sm text-gray-500">
+                      Show a special message before the quiz starts
                     </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-semibold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Questions
-                </button>
-                <button
-                  onClick={() => setStep(4)}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <Gift className="w-4 h-4 md:w-5 md:h-5" />
-                  Add Love Reveal
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: LOVE REVEAL */}
-        {step === 4 && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50 animate-fadeIn">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg">
-                <Gift className="w-5 h-5 md:w-6 md:h-6 text-purple-500" />
-              </div>
-              <div>
-                <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 font-serif">
-                  Love Reveal
-                </h2>
-                <p className="text-sm md:text-base text-pink-600">Add a special message for {theirName}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4 md:space-y-6">
-              <div className="flex items-center justify-between mb-3 md:mb-4 p-3 md:p-4 bg-gradient-to-r from-pink-50 to-red-50/30 rounded-xl border border-pink-200">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <div className="p-1 md:p-2 bg-pink-100 rounded-lg">
-                    <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-pink-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base text-pink-600">Enable Love Reveal</h3>
-                    <p className="text-xs text-pink-500">Show a special message before the quiz</p>
-                  </div>
-                </div>
-                <div className="relative">
-                  <input
-                    type="checkbox"
+                  <Switch
                     checked={loveReveal.enabled}
-                    onChange={(e) => setLoveReveal({ ...loveReveal, enabled: e.target.checked })}
-                    className="sr-only"
-                    id="reveal-toggle"
+                    onCheckedChange={(checked) => setLoveReveal({ ...loveReveal, enabled: checked })}
                   />
-                  <label
-                    htmlFor="reveal-toggle"
-                    className={`block w-12 md:w-14 h-6 md:h-7 rounded-full transition-all duration-300 cursor-pointer ${loveReveal.enabled 
-                      ? 'bg-gradient-to-r from-pink-500 to-red-500' 
-                      : 'bg-gray-300'}`}
-                  >
-                    <div className={`absolute top-0.5 md:top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 transform ${loveReveal.enabled 
-                      ? 'translate-x-6 md:translate-x-8' 
-                      : 'translate-x-0.5 md:translate-x-1'}`}></div>
-                  </label>
                 </div>
-              </div>
 
-              {loveReveal.enabled && (
-                <>
-                  <div>
-                    <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600 mb-1 md:mb-2">
-                      <Type className="w-3 h-3 md:w-4 md:h-4" />
-                      Reveal Title
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
+                {loveReveal.enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="reveal-title">Reveal Title</Label>
+                      <Input
+                        id="reveal-title"
+                        placeholder={`A Special Message from ${creatorName} to ${theirName}`}
                         value={loveReveal.title}
                         onChange={(e) => setLoveReveal({ ...loveReveal, title: e.target.value })}
-                        placeholder={`A Special Message from ${creatorName} to ${theirName}`}
-                        className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70"
                       />
-                      <MessageSquare className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4 gap-2">
-                      <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-pink-600">
-                        <Gift className="w-3 h-3 md:w-4 md:h-4" />
-                        Reveal Type
-                      </label>
-                      <div className="flex gap-1 md:gap-2">
-                        <button
-                          onClick={() => setLoveReveal({ ...loveReveal, type: 'text' })}
-                          className={`px-3 md:px-4 py-1 md:py-2 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2 ${loveReveal.type === 'text' 
-                            ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow' 
-                            : 'bg-white text-gray-700 border'}`}
-                        >
-                          <Type className="w-2 h-2 md:w-3 md:h-3" />
-                          Text Message
-                        </button>
-                        <button
-                          onClick={() => setLoveReveal({ ...loveReveal, type: 'image' })}
-                          className={`px-3 md:px-4 py-1 md:py-2 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2 ${loveReveal.type === 'image' 
-                            ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow' 
-                            : 'bg-white text-gray-700 border'}`}
-                        >
-                          <ImageIcon className="w-2 h-2 md:w-3 md:h-3" />
-                          Image Message
-                        </button>
-                      </div>
                     </div>
 
-                    {loveReveal.type === 'text' ? (
-                      <div className="relative">
-                        <textarea
-                          value={loveReveal.text}
-                          onChange={(e) => setLoveReveal({ ...loveReveal, text: e.target.value })}
-                          placeholder={`To my dearest ${theirName},\n\nI created this quiz to show you how much our memories mean to me...`}
-                          rows="5"
-                          className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-3 text-sm md:text-base border-2 border-pink-200 rounded-xl focus:border-pink-500 focus:outline-none bg-white/70 resize-none"
-                        />
-                        <Edit2 className="absolute left-2 md:left-3 top-3 w-3 h-3 md:w-4 md:h-4 text-pink-400" />
-                      </div>
-                    ) : (
-                      <div>
-                        {loveReveal.image ? (
-                          <div className="relative group">
-                            <img src={loveReveal.image} alt="Love reveal" className="w-full h-48 md:h-64 object-cover rounded-xl shadow transition-transform duration-300 group-hover:scale-[1.02]" />
-                            <div className="absolute top-2 md:top-3 right-2 md:right-3 flex gap-1 md:gap-2">
-                              <button
-                                onClick={() => setLoveReveal({ ...loveReveal, image: null })}
-                                className="bg-gradient-to-r from-pink-500 to-red-500 text-white p-1 md:p-2 rounded-full hover:scale-110 transition-all shadow-lg"
-                              >
-                                <X className="w-3 h-3 md:w-4 md:h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-36 md:h-48 border-2 border-dashed border-pink-300 rounded-xl cursor-pointer hover:border-pink-500 hover:bg-pink-50/30 transition-all duration-300 bg-white/50 group">
-                            <Gift className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-pink-400 mb-2 group-hover:scale-110 transition-transform" />
-                            <span className="text-xs md:text-sm text-pink-600 font-medium text-center">Upload love reveal image</span>
-                            <span className="text-xs text-pink-500 mt-1 text-center">Max 10MB • A special image for {theirName}</span>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={(e) => handleImageUpload(e, 'reveal')} 
-                              className="hidden" 
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Preview */}
-                  {loveReveal.title && (
-                    <div className="bg-gradient-to-r from-pink-50 to-red-50/50 rounded-xl p-4 md:p-6 border border-pink-200">
-                      <h3 className="font-bold text-sm md:text-base text-pink-600 mb-3 md:mb-4 flex items-center gap-1 md:gap-2">
-                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
-                        Reveal Preview for {theirName}
-                      </h3>
-                      <div className="bg-white/80 rounded-lg p-3 md:p-4">
-                        <h4 className="text-base md:text-lg font-bold text-gray-800 mb-2 md:mb-3">{loveReveal.title}</h4>
-                        {loveReveal.type === 'image' && loveReveal.image && (
-                          <img 
-                            src={loveReveal.image} 
-                            alt="Reveal preview" 
-                            className="w-full h-28 md:h-32 object-cover rounded-lg mb-2 md:mb-3"
+                    <div className="space-y-4">
+                      <Label>Reveal Type</Label>
+                      <Tabs 
+                        defaultValue="text" 
+                        value={loveReveal.type}
+                        onValueChange={(value) => setLoveReveal({ ...loveReveal, type: value })}
+                      >
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="text">Text Message</TabsTrigger>
+                          <TabsTrigger value="image">Image Message</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="text" className="mt-4">
+                          <Textarea
+                            placeholder={`To my dearest ${theirName},\n\nI created this quiz to show you how much our memories mean to me...`}
+                            value={loveReveal.text}
+                            onChange={(e) => setLoveReveal({ ...loveReveal, text: e.target.value })}
+                            rows={5}
                           />
-                        )}
-                        {loveReveal.type === 'text' && loveReveal.text && (
-                          <p className="text-gray-700 whitespace-pre-line text-sm md:text-base">{loveReveal.text}</p>
-                        )}
-                        {(!loveReveal.image && !loveReveal.text && loveReveal.type === 'text') && (
-                          <p className="text-pink-500 italic text-sm md:text-base">Your reveal message will appear here...</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-semibold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Messages
-                </button>
-                <button
-                  onClick={() => setStep(5)}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <Eye className="w-4 h-4 md:w-5 md:h-5" />
-                  Preview Quiz
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5: FINAL PREVIEW */}
-        {step === 5 && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50 animate-fadeIn">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg">
-                <Eye className="w-5 h-5 md:w-6 md:h-6 text-purple-500" />
-              </div>
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 font-serif">
-                Final Preview
-              </h2>
-            </div>
-            
-            <div className="space-y-4 md:space-y-6">
-              {/* Summary */}
-              <div className="bg-gradient-to-r from-pink-50 to-red-50/50 rounded-xl p-4 md:p-6 border border-pink-200">
-                <h3 className="font-bold text-sm md:text-base text-pink-600 mb-3 md:mb-4 flex items-center gap-1 md:gap-2">
-                  <Users className="w-4 h-4 md:w-5 md:h-5" />
-                  Quiz Summary
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <div className="space-y-2 md:space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">Title:</span>
-                      <span className="font-semibold text-pink-600 text-sm md:text-base">{gameTitle}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">From:</span>
-                      <span className="font-semibold text-sm md:text-base">{creatorName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">For:</span>
-                      <span className="font-semibold text-pink-600 text-sm md:text-base">{theirName}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 md:space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">Questions:</span>
-                      <span className="font-semibold text-sm md:text-base">5/5 Complete</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">Love Reveal:</span>
-                      <span className="font-semibold text-pink-600 text-sm md:text-base">
-                        {loveReveal.enabled ? 'Enabled ✨' : 'Disabled'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 text-sm md:text-base">Total Points:</span>
-                      <span className="font-semibold text-sm md:text-base">{questions.length * 2}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Questions Preview */}
-              <div className="bg-white/70 rounded-xl p-4 md:p-6 border border-pink-200">
-                <h3 className="font-bold text-sm md:text-base text-pink-600 mb-3 md:mb-4 flex items-center gap-1 md:gap-2">
-                  <FileText className="w-4 h-4 md:w-5 md:h-5" />
-                  Questions Preview
-                </h3>
-                <div className="space-y-3 md:space-y-4 max-h-64 md:max-h-80 overflow-y-auto">
-                  {questions.map((q, index) => (
-                    <div key={q.id} className="bg-gradient-to-r from-pink-50 to-red-50/30 p-3 md:p-4 rounded-lg hover:scale-[1.01] transition-transform">
-                      <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
-                        <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full flex items-center justify-center text-xs md:text-sm font-bold">
-                          {q.id}
-                        </div>
-                        <p className="font-semibold text-gray-800 text-sm md:text-base truncate">{q.text}</p>
-                        <span className={`text-xs px-1 md:px-2 py-0.5 rounded-full whitespace-nowrap ${
-                          q.type === 'options' 
-                            ? 'bg-purple-100 text-purple-600' 
-                            : 'bg-blue-100 text-blue-600'
-                        }`}>
-                          {q.type === 'options' ? 'Multiple Choice' : 'Text Answer'}
-                        </span>
-                      </div>
-                      <div className="space-y-1 md:space-y-2 ml-8 md:ml-11">
-                        {q.type === 'options' ? (
-                          <>
-                            <p className="text-xs md:text-sm text-gray-600">Options:</p>
-                            {q.options.map((opt, optIdx) => (
-                              <div key={optIdx} className="flex items-center space-x-1 md:space-x-2">
-                                <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs ${optIdx === q.correctOption 
-                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow' 
-                                  : 'bg-gray-100 text-gray-600'}`}>
-                                  {optIdx === q.correctOption ? <Check className="w-2 h-2 md:w-3 md:h-3" /> : String.fromCharCode(65 + optIdx)}
-                                </div>
-                                <span className="text-xs md:text-sm">{opt}</span>
-                              </div>
-                            ))}
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-xs md:text-sm text-gray-600">Type:</p>
-                            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-2 md:p-3 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm md:text-base">Text Answer</span>
-                                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-600">
-                                  Any answer is correct
-                                </span>
-                              </div>
+                        </TabsContent>
+                        <TabsContent value="image" className="mt-4">
+                          {loveReveal.image ? (
+                            <div className="relative">
+                              <img
+                                src={loveReveal.image}
+                                alt="Love reveal"
+                                className="w-full h-48 object-cover rounded-lg"
+                              />
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-2 right-2"
+                                onClick={() => setLoveReveal({ ...loveReveal, image: null })}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </>
-                        )}
-                      </div>
+                          ) : (
+                            <div className="border-2 border-dashed border-pink-300 rounded-lg p-8 text-center hover:border-pink-500 transition-colors cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(e, 'reveal')}
+                                className="hidden"
+                                id="reveal-image"
+                              />
+                              <label htmlFor="reveal-image" className="cursor-pointer">
+                                <Gift className="h-8 w-8 text-pink-400 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-pink-600">Upload love reveal image</p>
+                                <p className="text-xs text-pink-500 mt-1">Max 10MB • A special image for {theirName}</p>
+                              </label>
+                            </div>
+                          )}
+                        </TabsContent>
+                      </Tabs>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-           
-              {/* Love Reveal Preview */}
-              {loveReveal.enabled && loveReveal.title && (
-                <div className="bg-gradient-to-r from-pink-50 to-red-50/50 rounded-xl p-4 md:p-6 border border-pink-200">
-                  <h3 className="font-bold text-sm md:text-base text-pink-600 mb-3 md:mb-4 flex items-center gap-1 md:gap-2">
-                    <Gift className="w-4 h-4 md:w-5 md:h-5" />
-                    Love Reveal Preview
-                  </h3>
-                  <div className="bg-white/80 rounded-lg p-3 md:p-4">
-                    <h4 className="text-base md:text-lg font-bold text-gray-800 mb-2 md:mb-3">{loveReveal.title}</h4>
-                    {loveReveal.type === 'image' && loveReveal.image ? (
-                      <div className="h-24 md:h-32 bg-gradient-to-r from-pink-100 to-red-100 rounded-lg flex items-center justify-center">
-                        <span className="text-pink-500 text-sm md:text-base">Image will appear here</span>
-                      </div>
-                    ) : loveReveal.type === 'text' && loveReveal.text ? (
-                      <p className="text-gray-700 whitespace-pre-line text-sm md:text-base">{loveReveal.text}</p>
-                    ) : (
-                      <p className="text-pink-500 italic text-sm md:text-base">Reveal content will appear here...</p>
+                    {loveReveal.title && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Eye className="h-4 w-4" />
+                            Preview for {theirName}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <h4 className="font-semibold">{loveReveal.title}</h4>
+                            {loveReveal.type === 'image' && loveReveal.image && (
+                              <img
+                                src={loveReveal.image}
+                                alt="Reveal preview"
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                            )}
+                            {loveReveal.type === 'text' && loveReveal.text && (
+                              <p className="text-gray-500 whitespace-pre-line">{loveReveal.text}</p>
+                            )}
+                            {(!loveReveal.image && !loveReveal.text && loveReveal.type === 'text') && (
+                              <p className="text-gray-500 italic">Your reveal message will appear here...</p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* Final Data Log Button */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50/30 rounded-xl p-4 md:p-6 border border-purple-200">
-                <h3 className="font-bold text-sm md:text-base text-purple-600 mb-3 md:mb-4 flex items-center gap-1 md:gap-2">
-                  <FileText className="w-4 h-4 md:w-5 md:h-5" />
-                  Data Verification
-                </h3>
-                <p className="text-gray-700 text-sm md:text-base mb-3 md:mb-4">
-                  Click the button below to see all data that will be sent to the backend API in your browser console.
-                </p>
-                <button
-                  onClick={() => {
-                    const gameData = {
-                      gameInfo: {
-                        title: gameTitle,
-                        creatorName: creatorName,
-                        theirName: theirName,
-                        couplePhoto: couplePhoto ? 'Base64 image data included' : null,
-                        totalQuestions: 5,
-                        scoringSystem: {
-                          perfect: { min: 8, max: 10, message: messages.perfect },
-                          good: { min: 5, max: 7, message: messages.good },
-                          low: { min: 0, max: 4, message: messages.low }
-                        },
-                        loveReveal: loveReveal,
-                        createdAt: new Date().toISOString(),
-                        theme: 'valentine',
-                        totalPoints: questions.length * 2
-                      },
-                      questions: questions.map(q => ({
-                        id: q.id,
-                        text: q.text,
-                        type: q.type,
-                        questionImage: q.image ? 'Base64 image data included' : null,
-                        options: q.type === 'options' ? q.options.map((opt, idx) => ({
-                          index: idx,
-                          text: opt,
-                          isCorrect: idx === q.correctOption
-                        })) : [],
-                        correctOption: q.correctOption,
-                        points: 2
-                      })),
-                      messages: messages,
-                      timestamp: new Date().toISOString(),
-                      stats: {
-                        multipleChoiceQuestions: questions.filter(q => q.type === 'options').length,
-                        textQuestions: questions.filter(q => q.type === 'text').length,
-                        totalPoints: questions.length * 2
-                      }
-                    };
-                    
-                    console.log("📊 FINAL QUIZ DATA TO BE SENT TO API:");
-                    console.log(JSON.stringify(gameData, null, 2));
-                    
-                    showMessage(
-                      'Data Logged to Console',
-                      'All quiz data has been logged to your browser console (F12 → Console tab). You can view the complete JSON structure.',
-                      'info'
-                    );
-                  }}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 md:gap-3"
+                  </>
+                )}
+              </CardContent>
+              <CardFooter className="flex gap-4">
+                <Button
+                  variant="outline"
+                  className="gap-2 flex-1"
+                  onClick={() => setStep(3)}
                 >
-                  <FileText className="w-4 h-4 md:w-5 md:h-5" />
-                  Log Complete Data to Console
-                </button>
-              </div>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Messages
+                </Button>
+                <Button
+                  className="gap-2 flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+                  onClick={() => setStep(5)}
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview Quiz
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
 
-              <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
-                <button
+          {step === 5 && (
+            <Card className="border-pink-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-6 w-6 text-pink-500" />
+                  Final Preview
+                </CardTitle>
+                <CardDescription>
+                  Review your quiz before publishing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Accordion type="multiple" className="w-full">
+                  <AccordionItem value="summary">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Quiz Summary
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">Title:</span>
+                            <span className="font-semibold text-pink-600">{gameTitle}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">From:</span>
+                            <span className="font-semibold">{creatorName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">For:</span>
+                            <span className="font-semibold text-pink-600">{theirName}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">Questions:</span>
+                            <span className="font-semibold">5/5 Complete</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">Love Reveal:</span>
+                            <Badge variant={loveReveal.enabled ? "default" : "outline"}>
+                              {loveReveal.enabled ? 'Enabled ✨' : 'Disabled'}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm font-medium">Total Points:</span>
+                            <span className="font-semibold">{questions.length * 2}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="questions">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Questions Preview
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 max-h-80 overflow-y-auto">
+                        {questions.map((q) => (
+                          <Card key={q.id}>
+                            <CardHeader className="py-3">
+                              <div className="flex items-center gap-2">
+                                <Badge className="h-6 w-6 p-0 flex items-center justify-center">
+                                  {q.id}
+                                </Badge>
+                                <CardTitle className="text-sm">{q.text}</CardTitle>
+                                <Badge variant="outline" className="ml-auto">
+                                  {q.type === 'options' ? 'Multiple Choice' : 'Text Answer'}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="py-2">
+                              {q.type === 'options' ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Options:</p>
+                                  {q.options.map((opt, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <div className={`h-5 w-5 rounded-full flex items-center justify-center text-xs ${
+                                        idx === q.correctOption 
+                                          ? 'bg-green-100 text-green-600 border border-green-200' 
+                                          : 'bg-gray-100 text-gray-600'
+                                      }`}>
+                                        {idx === q.correctOption ? <Check className="h-2 w-2" /> : String.fromCharCode(65 + idx)}
+                                      </div>
+                                      <span className="text-sm">{opt}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                  <span className="text-sm font-medium">Text Answer</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    Any answer is correct
+                                  </Badge>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Data Verification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Click below to see all data that will be sent to the backend API in your browser console.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => {
+                        const gameData = {
+                          gameInfo: {
+                            title: gameTitle,
+                            creatorName: creatorName,
+                            theirName: theirName,
+                            couplePhoto: couplePhoto ? 'Base64 image data included' : null,
+                            totalQuestions: 5,
+                            scoringSystem: {
+                              perfect: { min: 8, max: 10, message: messages.perfect },
+                              good: { min: 5, max: 7, message: messages.good },
+                              low: { min: 0, max: 4, message: messages.low }
+                            },
+                            loveReveal: loveReveal,
+                            createdAt: new Date().toISOString(),
+                            theme: 'valentine',
+                            totalPoints: questions.length * 2
+                          },
+                          questions: questions.map(q => ({
+                            id: q.id,
+                            text: q.text,
+                            type: q.type,
+                            questionImage: q.image ? 'Base64 image data included' : null,
+                            options: q.type === 'options' ? q.options.map((opt, idx) => ({
+                              index: idx,
+                              text: opt,
+                              isCorrect: idx === q.correctOption
+                            })) : [],
+                            correctOption: q.correctOption,
+                            points: 2
+                          })),
+                          messages: messages,
+                          timestamp: new Date().toISOString(),
+                          stats: {
+                            multipleChoiceQuestions: questions.filter(q => q.type === 'options').length,
+                            textQuestions: questions.filter(q => q.type === 'text').length,
+                            totalPoints: questions.length * 2
+                          }
+                        };
+                        
+                        console.log("📊 FINAL QUIZ DATA TO BE SENT TO API:");
+                        console.log(JSON.stringify(gameData, null, 2));
+                        
+                        showMessage(
+                          'Data Logged to Console',
+                          'All quiz data has been logged to your browser console (F12 → Console tab). You can view the complete JSON structure.',
+                          'info'
+                        );
+                      }}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Log Complete Data to Console
+                    </Button>
+                  </CardContent>
+                </Card>
+              </CardContent>
+              <CardFooter className="flex gap-4">
+                <Button
+                  variant="outline"
+                  className="gap-2 flex-1"
                   onClick={() => setStep(4)}
-                  className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-semibold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all flex items-center justify-center gap-2 md:gap-3"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="h-4 w-4" />
                   Back to Reveal
-                </button>
-                <button
+                </Button>
+                <Button
+                  className="gap-2 flex-1 bg-pink-500 hover:bg-pink-600 text-white"
                   onClick={handleFinishCreator}
                   disabled={loading}
-                  className={`flex-1 font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 md:gap-3 ${loading 
-                    ? 'bg-gradient-to-r from-gray-300 to-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white shadow-lg shadow-pink-500/30'}`}
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 md:h-5 md:w-5 border-2 border-white border-t-transparent"></div>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                       Creating Quiz...
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 md:w-5 md:h-5" />
+                      <Save className="h-4 w-4" />
                       Create & Share
-                      <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                     </>
                   )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
 
-        {/* STEP 6: SHARE */}
-        {step === 6 && shareLink && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-6 lg:p-8 border border-pink-200/50 animate-fadeIn">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center p-3 md:p-4 bg-gradient-to-r from-pink-500/10 to-red-500/10 rounded-full mb-3 md:mb-4">
-                <Sparkles className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-pink-500" />
-              </div>
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-pink-600 to-red-500 bg-clip-text text-transparent mb-1 md:mb-2 font-serif">
-                Love Quiz Created! ✨
-              </h2>
-              <p className="text-sm md:text-base text-pink-600 mb-4 md:mb-6">Share this beautiful quiz with {theirName}</p>
-              
-              <div className="bg-gradient-to-r from-pink-50 to-red-50/50 rounded-xl p-4 md:p-6 mb-4 md:mb-6 border border-pink-200">
-                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                  <div className="p-1 md:p-2 bg-gradient-to-r from-pink-100 to-red-100 rounded-lg">
-                    <Users className="w-4 h-4 md:w-5 md:h-5 text-pink-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base text-pink-600">Ready for {theirName}!</h3>
-                    <p className="text-xs md:text-sm text-pink-500">Share this link with them</p>
-                  </div>
+          {step === 6 && shareLink && (
+            <Card className="border-pink-200 shadow-lg">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-pink-100">
+                  <Sparkles className="h-6 w-6 text-pink-500" />
                 </div>
-                
-                {/* Share Link */}
-                <div className="bg-white/80 rounded-lg p-3 md:p-4 mb-3 md:mb-4">
-                  <div className="flex items-center justify-between gap-1 md:gap-2 mb-2 md:mb-3">
-                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-pink-600">
-                      <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-                      Quiz Link:
+                <CardTitle className="text-2xl bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                  Love Quiz Created! ✨
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Share this beautiful quiz with {theirName}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Users className="h-4 w-4 text-pink-500" />
+                      Ready for {theirName}!
+                    </CardTitle>
+                    <CardDescription>Share this link with them</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={shareLink}
+                        readOnly
+                        className="font-mono text-sm"
+                      />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(shareLink);
+                                showMessage('Copied!', 'Link copied to clipboard! 📋', 'success');
+                              }}
+                            >
+                              <CopyIcon className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Copy link</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(shareLink);
-                        showMessage('Copied!', 'Link copied to clipboard! 📋', 'success');
-                      }}
-                      className="text-xs md:text-sm bg-gradient-to-r from-pink-500 to-red-500 text-white px-2 md:px-3 py-1 rounded-lg flex items-center gap-1 hover:scale-105 transition-transform"
-                    >
-                      <Copy className="w-2 h-2 md:w-3 md:h-3" />
-                      Copy
-                    </button>
-                  </div>
-                  <div className="bg-pink-50 p-2 md:p-3 rounded-lg border border-pink-200">
-                    <p className="text-xs md:text-sm text-pink-600 break-all font-mono">{shareLink}</p>
-                  </div>
-                </div>
-                
-                {/* Share Buttons */}
-                <div className="grid grid-cols-2 gap-2 md:gap-3 mb-4 md:mb-6">
-                  <button
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        className="gap-2 bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => {
+                          const text = `💖 Hey ${theirName}! I made a special Love Quiz for you! Can you guess how well you know me? 🌹 ${shareLink}`;
+                          navigator.clipboard.writeText(text);
+                          showMessage('Copied!', 'Message copied! 📋\nPaste it in WhatsApp, iMessage, etc.', 'success');
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Copy Message
+                      </Button>
+                      <Button
+                        className="gap-2"
+                        variant="outline"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({
+                              title: gameTitle,
+                              text: `💖 Hey ${theirName}! I made a special Love Quiz for you!`,
+                              url: shareLink,
+                            });
+                          } else {
+                            showMessage('Share', 'Copy the link and share it directly!', 'info');
+                          }
+                        }}
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-lg border p-3 text-center">
+                        <div className="text-xl font-bold text-pink-600">5</div>
+                        <div className="text-xs text-gray-500">Questions</div>
+                      </div>
+                      <div className="rounded-lg border p-3 text-center">
+                        <div className="text-xl font-bold text-pink-600">10</div>
+                        <div className="text-xs text-gray-500">Points</div>
+                      </div>
+                      <div className="rounded-lg border p-3 text-center">
+                        <div className="text-xl font-bold text-pink-600">
+                          {loveReveal.enabled ? '✨' : '—'}
+                        </div>
+                        <div className="text-xs text-gray-500">Reveal</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Alert className="bg-green-50 border-green-200">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertTitle>Successfully Created!</AlertTitle>
+                  <AlertDescription>
+                    Your quiz is saved and ready to share. {theirName} will see your love reveal, 
+                    answer {questions.length} questions, and get a personalized score message!
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button
+                    className="gap-2 bg-pink-500 hover:bg-pink-600 text-white"
                     onClick={() => {
-                      const text = `💖 Hey ${theirName}! I made a special Love Quiz for you! Can you guess how well you know me? 🌹 ${shareLink}`;
-                      navigator.clipboard.writeText(text);
-                      showMessage('Copied!', 'Message copied! 📋\nPaste it in WhatsApp, iMessage, etc.', 'success');
+                      setStep(1);
+                      setGameTitle('');
+                      setCreatorName('');
+                      setCouplePhoto(null);
+                      setTheirName('');
+                      setQuestions([]);
+                      setCurrentQuestion({
+                        id: null,
+                        text: '',
+                        type: 'options',
+                        image: null,
+                        options: ['', '', '', ''],
+                        correctOption: 0,
+                      });
+                      setMessages({
+                        perfect: {
+                          text: "Perfect! You know everything about me! ❤️",
+                          image: null,
+                          type: 'text',
+                          imageCaption: ''
+                        },
+                        good: {
+                          text: "Great! You know me pretty well! 💕",
+                          image: null,
+                          type: 'text',
+                          imageCaption: ''
+                        },
+                        low: {
+                          text: "Let's spend more time together! 😘",
+                          image: null,
+                          type: 'text',
+                          imageCaption: ''
+                        }
+                      });
+                      setLoveReveal({
+                        enabled: true,
+                        title: '',
+                        image: null,
+                        text: '',
+                        type: 'text'
+                      });
+                      setShareLink('');
                     }}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-2 md:py-3 px-2 md:px-4 text-xs md:text-sm rounded-xl transition-all flex items-center justify-center gap-1 md:gap-2"
                   >
-                    <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-                    Copy Message
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: gameTitle,
-                          text: `💖 Hey ${theirName}! I made a special Love Quiz for you!`,
-                          url: shareLink,
-                        });
-                      } else {
-                        showMessage('Share', 'Copy the link and share it directly!', 'info');
-                      }
-                    }}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-2 md:py-3 px-2 md:px-4 text-xs md:text-sm rounded-xl transition-all flex items-center justify-center gap-1 md:gap-2"
+                    <Plus className="h-4 w-4" />
+                    Create Another Quiz
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => window.open(shareLink, '_blank')}
                   >
-                    <Share2 className="w-3 h-3 md:w-4 md:h-4" />
-                    Share
-                  </button>
+                    <Eye className="h-4 w-4" />
+                    Preview Quiz
+                  </Button>
                 </div>
-                
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-1 md:gap-2">
-                  <div className="bg-white/80 p-2 md:p-3 rounded-lg text-center">
-                    <div className="text-lg md:text-xl lg:text-2xl font-bold text-pink-600">5</div>
-                    <div className="text-xs text-pink-500">Questions</div>
-                  </div>
-                  <div className="bg-white/80 p-2 md:p-3 rounded-lg text-center">
-                    <div className="text-lg md:text-xl lg:text-2xl font-bold text-pink-600">10</div>
-                    <div className="text-xs text-pink-500">Points</div>
-                  </div>
-                  <div className="bg-white/80 p-2 md:p-3 rounded-lg text-center">
-                    <div className="text-lg md:text-xl lg:text-2xl font-bold text-pink-600">{loveReveal.enabled ? '✨' : '—'}</div>
-                    <div className="text-xs text-pink-500">Reveal</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Success Message */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50/50 rounded-xl p-4 md:p-6 mb-4 md:mb-6 border border-green-200">
-                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                  <div className="p-1 md:p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg">
-                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base text-green-600">Successfully Created!</h3>
-                    <p className="text-xs md:text-sm text-green-500">Your quiz is saved and ready to share</p>
-                  </div>
-                </div>
-                <p className="text-gray-700 text-xs md:text-sm">
-                  {theirName} will see your love reveal, answer {questions.length} questions, 
-                  and get a personalized score message with your special touch!
+
+                <Separator />
+
+                <p className="text-center text-sm text-gray-500">
+                  ❤️ Made with love for {theirName} by {creatorName}
                 </p>
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-                <button
-                  onClick={() => {
-                    setStep(1);
-                    setGameTitle('');
-                    setCreatorName('');
-                    setCouplePhoto(null);
-                    setTheirName('');
-                    setQuestions([]);
-                    setCurrentQuestion({
-                      id: null,
-                      text: '',
-                      type: 'options',
-                      image: null,
-                      options: ['', '', '', ''],
-                      correctOption: 0,
-                    });
-                    setMessages({
-                      perfect: {
-                        text: "Perfect! You know everything about me! ❤️",
-                        image: null,
-                        type: 'text',
-                        imageCaption: ''
-                      },
-                      good: {
-                        text: "Great! You know me pretty well! 💕",
-                        image: null,
-                        type: 'text',
-                        imageCaption: ''
-                      },
-                      low: {
-                        text: "Let's spend more time together! 😘",
-                        image: null,
-                        type: 'text',
-                        imageCaption: ''
-                      }
-                    });
-                    setLoveReveal({
-                      enabled: true,
-                      title: '',
-                      image: null,
-                      text: '',
-                      type: 'text'
-                    });
-                    setShareLink('');
-                  }}
-                  className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-pink-500/30 flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                  Create Another Quiz
-                </button>
-                <button
-                  onClick={() => window.open(shareLink, '_blank')}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 md:py-4 px-4 md:px-6 text-sm md:text-base rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 md:gap-3"
-                >
-                  <Eye className="w-4 h-4 md:w-5 md:h-5" />
-                  Preview Quiz
-                </button>
-              </div>
-              
-              <p className="text-xs text-pink-400 mt-4 md:mt-6">
-                ❤️ Made with love for {theirName} by {creatorName}
-              </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {step < 6 && step > 1 && (
+            <div className="text-center">
+              <Button
+                variant="ghost"
+                className="gap-2"
+                onClick={() => setStep(step - 1)}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Go Back
+              </Button>
             </div>
-          </div>
-        )}
-        
-        {/* Navigation Footer */}
-        {step < 6 && step > 1 && (
-          <div className="mt-4 md:mt-6 text-center">
-            <button
-              onClick={() => setStep(step - 1)}
-              className="inline-flex items-center gap-1 md:gap-2 text-pink-600 hover:text-pink-700 font-semibold text-sm md:text-base px-3 md:px-4 py-1 md:py-2 rounded-lg hover:bg-pink-50/50 transition-colors"
-            >
-              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
-              Go Back
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
+    </>
+  )
 }
 
-export default Create;
+export default Create
