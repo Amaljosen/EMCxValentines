@@ -406,7 +406,6 @@ function Create() {
   const [accessToken, setAccessToken] = useState(
     localStorage.getItem("accessToken"),
   );
-  const [isDirectLogin, setIsDirectLogin] = useState(false); // Track if login from header
 
   // User details state
   const [userDetails, setUserDetails] = useState({
@@ -738,59 +737,7 @@ function Create() {
     setStep(3);
   };
 
-  // Auth Functions - FOR HEADER LOGIN BUTTON (Direct Login)
-  const handleDirectLogin = async () => {
-    if (!email.trim()) {
-      showMessage("Email Required", "Please enter your email address", "error");
-      return;
-    }
-
-    setAuthLoading(true);
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/login`,
-        { email },
-        { withCredentials: true },
-      );
-
-      const { accessToken: newAccessToken, message } = response.data;
-
-      // Store token in localStorage
-      localStorage.setItem("accessToken", newAccessToken);
-
-      // Set token in state
-      setAccessToken(newAccessToken);
-
-      // Set Authorization header immediately
-      axios.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
-
-      // Close auth modal
-      setShowAuthModal(false);
-
-      // Show success message
-      showMessage(
-        "Login Successful",
-        message || "You are now logged in!",
-        "success",
-      );
-
-      // Redirect to dashboard after 1 second
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1000);
-    } catch (error) {
-      console.error("Direct login error:", error.response?.data || error.message);
-      showMessage(
-        "Login Failed",
-        error.response?.data?.message || "Failed to login. Please try again.",
-        "error",
-      );
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  // Auth Functions - FOR PUBLISH FLOW (Signup with OTP)
+  // Auth Functions
   const handleSendOTP = async () => {
     if (!email.trim()) {
       showMessage("Email Required", "Please enter your email address", "error");
@@ -816,7 +763,7 @@ function Create() {
       console.error("Send OTP error:", error.response?.data || error.message);
       showMessage(
         "Error",
-        error.response?.data?.message || "Failed to send OTP. Please try again.",
+        error.response?.data?.message || "Failed to send OTP",
         "error",
       );
     } finally {
@@ -845,7 +792,7 @@ function Create() {
       console.error("Resend OTP error:", error.response?.data || error.message);
       showMessage(
         "Error",
-        error.response?.data?.message || "Failed to resend OTP. Please try again.",
+        error.response?.data?.message || "Failed to resend OTP",
         "error",
       );
     } finally {
@@ -876,7 +823,8 @@ function Create() {
       setAccessToken(newAccessToken);
 
       // Set Authorization header immediately for the next request
-      axios.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
+      axios.defaults.headers.common["Authorization"] =
+        `Bearer ${newAccessToken}`;
 
       // Close auth modal
       setShowAuthModal(false);
@@ -894,7 +842,7 @@ function Create() {
       console.error("Verify OTP error:", error.response?.data || error.message);
       showMessage(
         "Error",
-        error.response?.data?.message || "Invalid OTP code. Please try again.",
+        error.response?.data?.message || "Invalid OTP code",
         "error",
       );
     } finally {
@@ -924,15 +872,6 @@ function Create() {
     }
   };
 
-  // Open auth modal - detect if direct login or publish flow
-  const openAuthModal = (isDirect = false) => {
-    setIsDirectLogin(isDirect);
-    setAuthStep("email");
-    setEmail("");
-    setCode("");
-    setShowAuthModal(true);
-  };
-
   // FINAL STEP: Create, Save, and Publish everything (with token parameter)
   const handlePublishAllWithToken = async (token = accessToken) => {
     // Validate reveal text
@@ -952,7 +891,7 @@ function Create() {
         "Please log in to publish your quiz",
         "info",
       );
-      openAuthModal(false); // Open for publish flow
+      setShowAuthModal(true);
       return;
     }
 
@@ -1044,7 +983,7 @@ function Create() {
           "error",
         );
         handleLogout();
-        openAuthModal(false);
+        setShowAuthModal(true);
       } else if (error.response?.status === 404) {
         showMessage(
           "Endpoint Not Found",
@@ -1056,7 +995,7 @@ function Create() {
           "Error",
           error.response?.data?.message ||
             error.message ||
-            "Failed to publish quiz. Please try again.",
+            "Failed to publish quiz",
           "error",
         );
       }
@@ -1153,10 +1092,8 @@ function Create() {
   const goToDashboard = () => {
     navigate("/dashboard");
   };
-  
   const totalSteps = 3;
   const progressPercent = step > 1 ? ((step - 1) / (totalSteps - 1)) * 100 : 0;
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 p-3 md:p-6">
       {/* Main Dialog */}
@@ -1212,19 +1149,13 @@ function Create() {
                 <Lock className="h-5 w-5 md:h-6 md:w-6 text-pink-500" />
               </div>
               <DialogTitle className="text-base md:text-xl text-center">
-                {isDirectLogin
-                  ? "Login to Dashboard"
-                  : authStep === "email"
-                    ? "Login / Sign Up"
-                    : "Verify OTP"}
+                {authStep === "email" ? "Login / Sign Up" : "Verify OTP"}
               </DialogTitle>
             </div>
             <DialogDescription className="text-center">
-              {isDirectLogin
-                ? "Enter your email to login and access your dashboard"
-                : authStep === "email"
-                  ? "Enter your email to receive a verification code"
-                  : `Enter the 6-digit code sent to ${email}`}
+              {authStep === "email"
+                ? "Enter your email to receive a verification code"
+                : `Enter the 6-digit code sent to ${email}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -1289,7 +1220,7 @@ function Create() {
             )}
 
             <div className="flex gap-2">
-              {authStep === "otp" && !isDirectLogin && (
+              {authStep === "otp" && (
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -1304,33 +1235,18 @@ function Create() {
                 </Button>
               )}
               <Button
-                onClick={
-                  isDirectLogin
-                    ? handleDirectLogin
-                    : authStep === "email"
-                      ? handleSendOTP
-                      : handleVerifyOTP
-                }
+                onClick={authStep === "email" ? handleSendOTP : handleVerifyOTP}
                 disabled={authLoading}
                 className="flex-1"
               >
                 {authLoading ? (
                   <>
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent mr-1" />
-                    {isDirectLogin
-                      ? "Logging in..."
-                      : authStep === "email"
-                        ? "Sending..."
-                        : "Verifying..."}
+                    {authStep === "email" ? "Sending..." : "Verifying..."}
                   </>
                 ) : (
                   <>
-                    {isDirectLogin ? (
-                      <>
-                        <Mail className="h-3.5 w-3.5 mr-1" />
-                        Login to Dashboard
-                      </>
-                    ) : authStep === "email" ? (
+                    {authStep === "email" ? (
                       <>
                         <Mail className="h-3.5 w-3.5 mr-1" />
                         Send OTP
@@ -1346,7 +1262,7 @@ function Create() {
               </Button>
             </div>
 
-            {authStep === "email" && !isDirectLogin && (
+            {authStep === "email" && (
               <Alert variant="default" className="mt-2">
                 <div className="flex items-start gap-2">
                   <InfoIcon className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -1404,7 +1320,7 @@ function Create() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => openAuthModal(true)}
+                onClick={() => setShowAuthModal(true)}
                 className="text-xs gap-1"
               >
                 <Lock className="h-3 w-3" />
@@ -1530,7 +1446,7 @@ function Create() {
                     </p>
                   </div>
                   <Badge variant="default" className="text-xs px-2 py-0.5">
-                      {Math.round(((step - 1) / getTotalSteps()) * 100)}%
+                    {Math.round((step / getTotalSteps()) * 100)}%
                   </Badge>
                 </div>
 
@@ -2025,7 +1941,7 @@ function Create() {
                   <Button
                     className="gap-1.5 w-full text-xs md:text-sm"
                     onClick={() =>
-                      accessToken ? handlePublishAll() : openAuthModal(false)
+                      accessToken ? handlePublishAll() : setShowAuthModal(true)
                     }
                     disabled={loading || !reveal.revealText.trim()}
                   >
